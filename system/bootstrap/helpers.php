@@ -14,11 +14,11 @@ if (!function_exists('env')) {
             return $default;
         }
 
-        if (strtolower((string) $value) === 'true') {
+        if (is_string($value) && strtolower($value) === 'true') {
             return true;
         }
 
-        if (strtolower((string) $value) === 'false') {
+        if (is_string($value) && strtolower($value) === 'false') {
             return false;
         }
 
@@ -31,17 +31,23 @@ if (!function_exists('env')) {
 }
 
 if (!function_exists('config')) {
-    function config(string $key = null, mixed $default = null): mixed
+    function config(?string $key = null, mixed $default = null): mixed
     {
         static $configs = [];
 
         if (empty($configs)) {
             $configDir = PATH_CONFIG;
-            $files = glob($configDir . '/*.php');
+            if (is_dir($configDir)) {
+                $files = glob($configDir . '/*.php');
 
-            foreach ($files as $file) {
-                $name = basename($file, '.php');
-                $configs[$name] = require $file;
+                if (is_array($files)) {
+                    foreach ($files as $file) {
+                        $name = basename($file, '.php');
+                        if ($name !== 'index') {
+                            $configs[$name] = require $file;
+                        }
+                    }
+                }
             }
         }
 
@@ -87,9 +93,38 @@ if (!function_exists('path')) {
             'cache' => PATH_CACHE,
             'temp' => PATH_TEMP,
             'sessions' => PATH_SESSIONS,
+            'exceptions' => PATH_EXCEPTIONS,
         ];
 
         return $paths[$key] ?? $default;
+    }
+}
+
+if (!function_exists('base_path')) {
+    function base_path(string $path = ''): string
+    {
+        return PATH_ROOT . ($path !== '' ? DS . ltrim($path, '/\\') : '');
+    }
+}
+
+if (!function_exists('public_path')) {
+    function public_path(string $path = ''): string
+    {
+        return PATH_PUBLIC . ($path !== '' ? DS . ltrim($path, '/\\') : '');
+    }
+}
+
+if (!function_exists('storage_path')) {
+    function storage_path(string $path = ''): string
+    {
+        return PATH_STORAGE . ($path !== '' ? DS . ltrim($path, '/\\') : '');
+    }
+}
+
+if (!function_exists('config_path')) {
+    function config_path(string $path = ''): string
+    {
+        return PATH_CONFIG . ($path !== '' ? DS . ltrim($path, '/\\') : '');
     }
 }
 
@@ -105,6 +140,7 @@ if (!function_exists('getIpAddress')) {
                 return $ip;
             }
         }
+
         return '0.0.0.0';
     }
 }
@@ -120,6 +156,21 @@ if (!function_exists('uuid')) {
     function uuid(): string
     {
         return strtolower(str_replace(['-', ' '], '', preg_replace('/[^A-Za-z0-9]/', '', microtime() . uniqid('', true))));
+    }
+}
+
+if (!function_exists('random_string')) {
+    function random_string(int $length = 16): string
+    {
+        $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $charactersLength = strlen($characters);
+        $randomString = '';
+
+        for ($i = 0; $i < $length; $i++) {
+            $randomString .= $characters[random_int(0, $charactersLength - 1)];
+        }
+
+        return $randomString;
     }
 }
 
@@ -155,3 +206,27 @@ if (!function_exists('dump')) {
         }
     }
 }
+
+if (!function_exists('load_system_helpers')) {
+    function load_system_helpers(): void
+    {
+        $helperDir = PATH_SYSTEM . DS . 'helpers';
+
+        if (!is_dir($helperDir)) {
+            return;
+        }
+
+        $files = glob($helperDir . DS . '*.php');
+        if (!is_array($files)) {
+            return;
+        }
+
+        sort($files, SORT_STRING);
+
+        foreach ($files as $file) {
+            require_once $file;
+        }
+    }
+}
+
+load_system_helpers();
